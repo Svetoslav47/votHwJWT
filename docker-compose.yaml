@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  minio:
+    image: minio/minio
+    container_name: minio
+    env_file: .env
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server --console-address ":9001" /data
+    volumes:
+      - minio_data:/data
+    restart: always
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak
+    env_file: .env
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_HTTP_ENABLED=true
+      - KC_SPI_CORS_ALLOWED_ORIGINS=*
+      - KC_SPI_CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
+      - KC_SPI_CORS_ALLOWED_HEADERS=Authorization,Content-Type
+      - KC_SPI_CORS_EXPOSED_HEADERS=Access-Control-Allow-Origin,Access-Control-Allow-Credentials
+      - KC_SPI_CORS_ALLOW_CREDENTIALS=true
+    command: start-dev
+    ports:
+      - "8080:8080"
+    restart: always
+
+  app:
+    build: ./app
+    container_name: file_app
+    depends_on:
+      - minio
+      - keycloak
+    env_file: .env
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./app:/app
+    restart: always
+
+volumes:
+  minio_data:
